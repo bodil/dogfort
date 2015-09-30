@@ -1,26 +1,26 @@
-(ns dogfort.testmain
-  (:use-macros [redlobster.macros :only [promise defer-node
+(ns dogfort.dev.testmain
+  (:use-macros [redlobster.macros :only [promise defer-node waitp
                                          when-realised let-realised]]
-               [dogfort.middleware.routes-macros :only [defroutes GET POST]])
+               [dogfort.middleware.routes-macros :only [defroutes GET POST ANY]])
   (:require-macros [cljs.node-macros :as n]
                    [hiccups.core :as hiccups])
   (:use [dogfort.http :only [run-http]]
         [dogfort.middleware.file :only [wrap-file]]
         [dogfort.middleware.body-parser :only [wrap-body-parser]]
-        [cljs.node :only [log]])
+        [cljs.node :only [log]]
+
+        )
   (:require [cljs.nodejs]
+            [dogfort.middleware.defaults :as defaults]
             [redlobster.promise :as p]
             [redlobster.mongo :as mongo]
             [dogfort.middleware.routes]
             [dogfort.util.response :as response]
+            [dogfort.dev.nrepl :as nrepl]
+            [dogfort.dev.test :as test]
             [hiccups.runtime]))
 
-(n/require "fs" fs)
-
-(def coll
-  (let-realised
-   [db (mongo/connect "localhost" 27017 "dogfort")]
-   (mongo/collection @db "items")))
+(cljs.nodejs/enable-util-print!)
 
 (defn concept-item [item]
   [:li {:class (if (item "done") "done" "open")}
@@ -42,32 +42,18 @@
       [:input {:type "text" :name "new"}]]]]))
 
 (defroutes handler
-  (GET "/" []
-       (when-realised
-        [coll]
-        (let-realised
-         [docs (mongo/find-all @coll {})]
-         (response/response 200 (page-template @docs)))))
-  (POST "/new" [new]
-        (when-realised
-         [coll]
-         (let-realised
-          [docs (mongo/save! @coll {"name" new "done" false})]
-          (response/redirect-after-post "/"))))
-  (POST "/delete/:id" [id]
-        (when-realised
-         [coll]
-         (let-realised
-          [docs (mongo/delete-id! @coll id)]
-          (response/redirect-after-post "/"))))
-  (POST "/check/:id" [id]
-        (when-realised
-         [coll]
-         (let-realised
-          [docs (mongo/update-id! @coll id #(assoc % "done" (not (% "done"))))]
-          (response/redirect-after-post "/")))))
+  (ANY "/" req
+       {:status 200
+        :body (pr-str req)
+        :session {:hi {:value "therez"}}})
+  )
 
 (defn main [& args]
-  (run-http (wrap-body-parser (wrap-file handler "test-static")) {:port 1337}))
+  (println "starting")
+  (-> handler
+      (defaults/wrap-defaults {:wrap-file "static3/static2"})
+      (run-http {:port 5000})))
+
+(test/run)
 
 (set! *main-cli-fn* main)
