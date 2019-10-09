@@ -1,5 +1,7 @@
 # Dog Fort
 
+This repository is now mantained at [https://github.com/whamtet/dogfort](https://github.com/whamtet/dogfort).
+
 ![Dog Fort](https://raw.github.com/bodil/dogfort/master/dogfort.jpg)
 
 ## Quick Start
